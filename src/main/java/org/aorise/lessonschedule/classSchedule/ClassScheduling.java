@@ -71,7 +71,6 @@ public class ClassScheduling {
                         if (this.scheduledLesson.get(this.generateKey(item.getKey(), itemItem.getKey(), weekDay, lessonNo)) != null) {
                             continue;//已经排课
                         }
-                        this.addScheduldPosition(item.getKey(), itemItem.getKey(), weekDay, lessonNo);
                         List<SchedulingProcessInfo> lessonValidSubjects = this.fetchValidSubject(item.getKey(), itemItem.getKey(), weekDay, lessonNo);
                         if (iSubjectChoose != null) {
                             List<String> udfSubjects = iSubjectChoose.unSelectSubject(item.getKey(), itemItem.getKey(), weekDay, lessonNo);
@@ -81,6 +80,8 @@ public class ClassScheduling {
                         if (lessonValidSubjects.size() == 0) {
                             continue;
                         }
+
+                        this.addScheduldPosition(item.getKey(), itemItem.getKey(), weekDay, lessonNo);
                         //处理权重
                         this.calcWeights(item.getKey(), itemItem.getKey(), weekDay, lessonNo, lessonValidSubjects);
                         //选择一门课
@@ -117,7 +118,7 @@ public class ClassScheduling {
         List<SchedulingProcessInfo> result = new ArrayList<SchedulingProcessInfo>();
         for (SchedulingProcessInfo item : this.scheduledInfo.get(grade).get(classNo).get(weekDay).get(lessonNo)) {
             Integer reason = item.getCannotSelReason();
-            if (reason == 0) {
+            if (reason != 1) {
                 result.add(item);
             }
         }
@@ -130,47 +131,50 @@ public class ClassScheduling {
         boolean canChangeSourcePos = false;
         for (Integer weekDay = 0; weekDay < this.gradeInfoMap.get(grade).getDayPerWeek(); weekDay++) {
             for (Integer lessonNo = 0; lessonNo < this.gradeInfoMap.get(grade).getLessonPerDay(); lessonNo++) {
+                if (this.scheduledLesson.get(this.generateKey(grade, classNo, weekDay, lessonNo)) != null) {
+                    continue;
+                }
                 //获取可以安排的科目列表
-                canChangeDestPos = false;
-                canChangeSourcePos = false;
-                List<SchedulingProcessInfo> canSelectSubjects = this.fetchMicroChangeSubjectCanSelect(grade, classNo, weekDay, lessonNo);
+                List<SchedulingProcessInfo> canSelectSubjects = this.fetchMicroChangeSubjectValids(grade, classNo, weekDay, lessonNo);
+                List<SchedulingProcessInfo> unFixedSubjects = this.fetchMicroChangeSubjectCanSelect(grade, classNo, weekDay, lessonNo);
                 if (canSelectSubjects.size() <= 0) {
                     return;
                 }
                 //遍历科目
-
-                //遍历预备调换位置（调换下午的课程）
-                for (Integer weekDay1 = 0; weekDay1 < this.gradeInfoMap.get(grade).getDayPerWeek(); weekDay1++) {//遍历待替换的位置
-                    for (Integer lessonNo1 = this.gradeInfoMap.get(grade).getLessonAtAM(); lessonNo1 < this.gradeInfoMap.get(grade).getLessonPerDay(); lessonNo1++) {
-                        //此位置可安排的课程
-                        List<SchedulingProcessInfo> canChangeSubjects = this.fetchMicroChangeSubjectValids(grade, classNo, weekDay1, lessonNo1);
-                        if (canChangeSubjects.size() <= 0) {
-                            continue;
-                        }
-                        SchedulingProcessInfo sourceSubject = null;
-                        SchedulingProcessInfo destSubject = null;
-                        SchedulePositionInfo destInfo = this.scheduleInfos.get(grade).get(classNo).get(weekDay1).get(lessonNo1);
-                        for (SchedulingProcessInfo subjectS : canSelectSubjects) {
-                            if (subjectS.getScheduleClassInfo().getSubjectInfo().equals(destInfo.getSubjectInfo())) {
-                                canChangeSourcePos=true;
-                                sourceSubject=subjectS;
-                                break;
+                for (SchedulingProcessInfo subjectC : unFixedSubjects) {
+                    //遍历预备调换位置（调换下午的课程）
+                    for (Integer weekDay1 = 0; weekDay1 < this.gradeInfoMap.get(grade).getDayPerWeek(); weekDay1++) {//遍历待替换的位置
+                        for (Integer lessonNo1 = this.gradeInfoMap.get(grade).getLessonAtAM(); lessonNo1 < this.gradeInfoMap.get(grade).getLessonPerDay(); lessonNo1++) {
+                            //此位置可安排的课程
+                            List<SchedulingProcessInfo> canChangeSubjects = this.fetchMicroChangeSubjectValids(grade, classNo, weekDay1, lessonNo1);
+                            if (canChangeSubjects.size() <= 0) {
+                                continue;
                             }
-                        }
-                        //canChangeSubjects包含item,已经排好的位置可以安排没有安排满的课程
-                        for (SchedulingProcessInfo subjectD : canChangeSubjects) {
+                            canChangeDestPos = false;
+                            canChangeSourcePos = false;
+                            SchedulingProcessInfo sourceSubject = null;
+                            SchedulingProcessInfo destSubject = null;
+                            SchedulePositionInfo destInfo = this.scheduleInfos.get(grade).get(classNo).get(weekDay1).get(lessonNo1);
                             for (SchedulingProcessInfo subjectS : canSelectSubjects) {
-                                if(subjectD.getScheduleClassInfo().getSubjectInfo().equals(subjectS.getScheduleClassInfo().getSubjectInfo())){
-                                    canChangeDestPos=true;
-                                    destSubject=subjectD;
+                                if (subjectS.getScheduleClassInfo().getSubjectInfo().equals(destInfo.getSubjectInfo())) {
+                                    canChangeSourcePos = true;
+                                    sourceSubject = subjectS;
                                     break;
                                 }
                             }
-                        }
-                        if(canChangeDestPos&&canChangeSourcePos){
-                            this.setScheduleTable(grade,classNo,weekDay,lessonNo,destSubject);
-                            this.setScheduleTable(grade,classNo,weekDay1,lessonNo1,sourceSubject);
-                            return;
+                            //canChangeSubjects包含item,已经排好的位置可以安排没有安排满的课程
+                            for (SchedulingProcessInfo subjectD : canChangeSubjects) {
+                                    if (subjectD.getScheduleClassInfo().getSubjectInfo().equals(subjectC.getScheduleClassInfo().getSubjectInfo())) {
+                                        canChangeDestPos = true;
+                                        destSubject = subjectD;
+                                        break;
+                                    }
+                            }
+                            if (canChangeDestPos && canChangeSourcePos) {
+                                this.setScheduleTable(grade, classNo, weekDay, lessonNo, destSubject);
+                                this.setScheduleTable(grade, classNo, weekDay1, lessonNo1, sourceSubject);
+                                return;
+                            }
                         }
                     }
                 }
@@ -256,13 +260,15 @@ public class ClassScheduling {
                                 info.setCannotSelReason(1);
                                 info.setCanSelect(false);
                             }
-                            if (info.getScheduleClassInfo().getUnUsedCount() == 0) {
-                                info.setCannotSelReason(2);
-                                info.setCanSelect(false);
-                            }
-                            if (info.getScheduleClassInfo().getFreeSpace() <= 0) {//无可排位置
-                                info.setCannotSelReason(3);
-                                info.setCanSelect(false);
+                            if(info.getCannotSelReason()==0) {
+                                if (info.getScheduleClassInfo().getUnUsedCount() == 0) {
+                                    info.setCannotSelReason(2);
+                                    info.setCanSelect(false);
+                                }
+                                if (info.getScheduleClassInfo().getFreeSpace() <= 0) {//无可排位置
+                                    info.setCannotSelReason(3);
+                                    info.setCanSelect(false);
+                                }
                             }
                         }
                         //如果此位置只有一门课可以选择
