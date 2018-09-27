@@ -13,6 +13,7 @@ import java.util.*;
 @Data
 public class ClassScheduling {
     private Map<Integer, GradeInfo> gradeInfoMap;//基础信息           //输入信息
+    private List<SchedulePositionInfo> udfFixedSubjectList;          //外部初始化
     private Map<Integer, Map<Integer, Map<Integer, Map<Integer, SchedulePositionInfo>>>> scheduleInfos;//课表信息，年级：班级：周天：课节：课程  //最终输出
     private Map<String, Map<Integer, Map<Integer, SchedulePositionInfo>>> teacherSchedule;//老师课程安排  //中间数据
     private Map<Integer, Map<Integer, List<ScheduleClassInfo>>> scheduleClassInfo;//班级课程信息
@@ -53,8 +54,13 @@ public class ClassScheduling {
         if (!this.initScheduldInfo(this.gradeInfoMap)) {
             return false;
         }
+
         this.scheduledLesson = new HashMap<Integer, Integer>();
         this.onlyOneChoice = new ArrayList<SchedulePositionInfo>();
+        //优先安排外部设定唯一的科目
+        this.firstSetUdfOnlyOneSubject(this.udfFixedSubjectList);
+
+        this.firstSetOnlyChoice();
         //遍历所有课节
         for (Map.Entry<Integer, GradeInfo> item : this.gradeInfoMap.entrySet()) {
             for (Map.Entry<Integer, ClassInfo> itemItem : item.getValue().getClassInfos().entrySet()) {
@@ -100,6 +106,26 @@ public class ClassScheduling {
             }
         }
         return true;
+    }
+
+    //安排外部设置只有一门可选科目的位置
+    private void firstSetUdfOnlyOneSubject(List<SchedulePositionInfo> positionInfos){
+        if(positionInfos==null){
+            return;
+        }
+        for(SchedulePositionInfo info:positionInfos){
+            //设置对应位置的科目
+            for(SchedulingProcessInfo item:this.scheduledInfo.get(info.getGrade()).get(info.getClassNo())
+            .get(info.getWeekDay()).get(info.getSeqNo())){
+                if(!info.getSubjectInfo().equals(item.getScheduleClassInfo().getSubjectInfo())){
+                    item.setCannotSelReason(4);//外部设置
+                    item.setCanSelect(false);
+                }
+            }
+            if (this.scheduledLesson.get(this.generateKey(info.getGrade(),info.getClassNo(),info.getWeekDay(),info.getSeqNo())) == null) {
+                this.setOnlyOneSubjectChoice(info.getGrade(),info.getClassNo(),info.getWeekDay(),info.getSeqNo());
+            }
+        }
     }
 
     //未安排完的科目
@@ -207,7 +233,7 @@ public class ClassScheduling {
             }
         }
         //设置预排课信息
-        this.onlyOneChoice.clear();
+        this.onlyOneChoice.remove(item);
         this.setPreScheduleInfo(item.getGrade(), item.getClassNo(), item.getWeekDay(), item.getSeqNo(), subjectTeacher, subject);
         this.firstSetOnlyChoice();
     }
@@ -314,6 +340,7 @@ public class ClassScheduling {
         }
     }
 
+    //设置只有一门可选的位置
     private void setOnlyOneSubjectChoice(Integer grade, Integer classNo, Integer weekDay, Integer lesssonNo) {
         Integer subjectCount = 0;
         SubjectInfo choice = null;
@@ -323,12 +350,20 @@ public class ClassScheduling {
                 subjectCount++;
             }
         }
-        if (subjectCount == 1) {
-            for (SchedulePositionInfo item : this.onlyOneChoice) {
-                if (item.getGrade() == grade && item.getClassNo() == classNo && item.getWeekDay() == weekDay && item.getSeqNo() == lesssonNo) {
-                    return;
+        if(subjectCount>1){
+            return;
+        }
+        for (SchedulePositionInfo item : this.onlyOneChoice) {
+            if (item.getGrade() == grade && item.getClassNo() == classNo && item.getWeekDay() == weekDay && item.getSeqNo() == lesssonNo) {
+                //无课可选，则从中移除
+                if(subjectCount==0){
+                    this.onlyOneChoice.remove(item);
                 }
+                return;
             }
+        }
+        if (subjectCount == 1) {
+            //检查是否已经在列表
             this.onlyOneChoice.add(new SchedulePositionInfo(grade, classNo, weekDay, lesssonNo, choice,
                     this.fetchTeacherByKemuAndLesson(grade, classNo, choice.getSubjectName())));
         }
@@ -356,6 +391,16 @@ public class ClassScheduling {
         this.scheduleInfos.get(grade).get(classNo).get(weekDay).get(lesssonNo).setSubjectInfo(schedulingProcessInfo.getScheduleClassInfo().getSubjectInfo());
         this.scheduleInfos.get(grade).get(classNo).get(weekDay).get(lesssonNo).setTeacher(this.fetchTeacherByKemuAndLesson(grade, classNo,
                 schedulingProcessInfo.getScheduleClassInfo().getSubjectInfo().getSubjectName()));
+    }
+
+    //设置课程 override
+    private void setScheduleTable(Integer grade, Integer classNo, Integer weekDay, Integer lesssonNo, SchedulePositionInfo schedulePositionInfo) {
+        this.scheduleInfos.get(grade).get(classNo).get(weekDay).get(lesssonNo).setGrade(grade);
+        this.scheduleInfos.get(grade).get(classNo).get(weekDay).get(lesssonNo).setClassNo(classNo);
+        this.scheduleInfos.get(grade).get(classNo).get(weekDay).get(lesssonNo).setWeekDay(weekDay);
+        this.scheduleInfos.get(grade).get(classNo).get(weekDay).get(lesssonNo).setSeqNo(lesssonNo);
+        this.scheduleInfos.get(grade).get(classNo).get(weekDay).get(lesssonNo).setSubjectInfo(schedulePositionInfo.getSubjectInfo());
+        this.scheduleInfos.get(grade).get(classNo).get(weekDay).get(lesssonNo).setTeacher(schedulePositionInfo.getTeacher());
     }
 
     //根据权重选择一门课
@@ -473,6 +518,9 @@ public class ClassScheduling {
 
     //平均课节权重
     private Integer avgWeekDayWeight(Integer grade, Integer classNo, Integer weekDay, Integer lesssonNo, SchedulingProcessInfo schedulingProcessInfo) {
+        if(weekDay+1==this.gradeInfoMap.get(grade).getDayPerWeek()){
+            return 0;
+        }
         Integer result = 0;
         double avgFixed = schedulingProcessInfo.getScheduleClassInfo().getTotalCount() / 1.0 / this.gradeInfoMap.get(grade).getDayPerWeek();
         //查看当天是否已经安排
@@ -491,8 +539,6 @@ public class ClassScheduling {
         } else if (avgUnFixed < avgFixed) {
             result -= WeightDefines.SUBJECT_PER_DAY;
         }
-
-
         return result;
     }
 
