@@ -18,10 +18,11 @@ public class GradeInfo {
     private Integer lessonPerDay;//每天几节课
     private Integer lessonAtAM;//上午课节
     private Integer lessonAtPM;//下午课节
+    private Integer nullPosition;//无课优先安排的课节，默认每天最后一节
     private List<SubjectInfo> subjectInfos;//年级开设科目列表
     private Map<Integer,ClassInfo> classInfos;//班级信息，以及班级任课信息
 
-    public GradeInfo(Integer g, String gn, Integer c, Integer d, Integer l,Integer lam,Integer lpm) {
+    public GradeInfo(Integer g, String gn, Integer c, Integer d, Integer l,Integer lam,Integer lpm,Integer np) {
         this.grade = d;
         this.gradeName = gn;
         this.classCount = c;
@@ -29,5 +30,11 @@ public class GradeInfo {
         this.lessonPerDay = l;
         this.lessonAtAM=lam;
         this.lessonAtPM=lpm;
+        if(np<1){
+            this.nullPosition=l;
+        }else{
+            this.nullPosition=np;
+        }
+
     }
 }

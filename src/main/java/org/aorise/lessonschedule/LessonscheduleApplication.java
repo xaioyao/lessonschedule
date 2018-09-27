@@ -24,36 +24,36 @@ public class LessonscheduleApplication {
         //6个年级 每个年级8个班  主课一个老师2个班  副科一个老师四个班  非文化课一个老师8个班
         //每周5天  每天7节
         for (Integer grade = 0; grade < 1; grade++) {
-            GradeInfo gi = new GradeInfo(grade, grade.toString(), 8, 5, 7, 4, 3);
+            GradeInfo gi = new GradeInfo(grade, grade.toString(), 8, 5, 6, 4, 2,4);
             List<SubjectInfo> subjectInfos = new ArrayList<SubjectInfo>();
-//            subjectInfos.add(new SubjectInfo("yw", "语文", 1, 9));
-//            subjectInfos.add(new SubjectInfo("sx", "数学", 2, 4));
-//            subjectInfos.add(new SubjectInfo("en", "英语", 2, 3));
-//            subjectInfos.add(new SubjectInfo("yy", "音乐", 3, 2));
-//            subjectInfos.add(new SubjectInfo("xx", "信息", 2, 4));
-//            subjectInfos.add(new SubjectInfo("ld", "劳动", 3, 2));
-//            subjectInfos.add(new SubjectInfo("ms", "美术", 3, 1));
-//            subjectInfos.add(new SubjectInfo("dl", "地理", 3, 1));
-
-            subjectInfos.add(new SubjectInfo("yw", "语文", 1, 5));
-            subjectInfos.add(new SubjectInfo("sx", "数学", 1, 5));
-            subjectInfos.add(new SubjectInfo("en", "英语", 1, 4));
-            subjectInfos.add(new SubjectInfo("yy", "音乐", 3, 1));
-            subjectInfos.add(new SubjectInfo("xx", "信息", 3, 1));
-            subjectInfos.add(new SubjectInfo("ld", "劳动", 3, 1));
+            subjectInfos.add(new SubjectInfo("yw", "语文", 1, 9));
+            subjectInfos.add(new SubjectInfo("sx", "数学", 2, 4));
+            subjectInfos.add(new SubjectInfo("en", "英语", 2, 3));
+            subjectInfos.add(new SubjectInfo("yy", "音乐", 3, 2));
+            subjectInfos.add(new SubjectInfo("xx", "信息", 2, 4));
+            subjectInfos.add(new SubjectInfo("ld", "劳动", 3, 2));
             subjectInfos.add(new SubjectInfo("ms", "美术", 3, 1));
-            subjectInfos.add(new SubjectInfo("dl", "地理", 2, 2));
-            subjectInfos.add(new SubjectInfo("yx", "研学", 3, 1));
-            subjectInfos.add(new SubjectInfo("ls", "历史", 2, 3));
-            subjectInfos.add(new SubjectInfo("df", "道德", 2, 2));
-            subjectInfos.add(new SubjectInfo("sw", "生物", 2, 2));
-            subjectInfos.add(new SubjectInfo("gx", "国学", 3, 1));
-            subjectInfos.add(new SubjectInfo("ty", "体育", 3, 1));
-            subjectInfos.add(new SubjectInfo("jk", "健康", 3, 1));
-            subjectInfos.add(new SubjectInfo("zt", "专题", 3, 1));
-            subjectInfos.add(new SubjectInfo("sj", "实践", 3, 1));
-            subjectInfos.add(new SubjectInfo("zq", "足球", 3, 1));
-            subjectInfos.add(new SubjectInfo("tt", "团活", 3, 1));
+            subjectInfos.add(new SubjectInfo("dl", "地理", 3, 1));
+
+//            subjectInfos.add(new SubjectInfo("yw", "语文", 1, 5));
+//            subjectInfos.add(new SubjectInfo("sx", "数学", 1, 5));
+//            subjectInfos.add(new SubjectInfo("en", "英语", 1, 4));
+//            subjectInfos.add(new SubjectInfo("yy", "音乐", 3, 1));
+//            subjectInfos.add(new SubjectInfo("xx", "信息", 3, 1));
+//            subjectInfos.add(new SubjectInfo("ld", "劳动", 3, 1));
+//            subjectInfos.add(new SubjectInfo("ms", "美术", 3, 1));
+//            subjectInfos.add(new SubjectInfo("dl", "地理", 2, 2));
+//            subjectInfos.add(new SubjectInfo("yx", "研学", 3, 1));
+//            subjectInfos.add(new SubjectInfo("ls", "历史", 2, 3));
+//            subjectInfos.add(new SubjectInfo("df", "道德", 2, 2));
+//            subjectInfos.add(new SubjectInfo("sw", "生物", 2, 2));
+//            subjectInfos.add(new SubjectInfo("gx", "国学", 3, 1));
+//            subjectInfos.add(new SubjectInfo("ty", "体育", 3, 1));
+//            subjectInfos.add(new SubjectInfo("jk", "健康", 3, 1));
+//            subjectInfos.add(new SubjectInfo("zt", "专题", 3, 1));
+//            subjectInfos.add(new SubjectInfo("sj", "实践", 3, 1));
+//            subjectInfos.add(new SubjectInfo("zq", "足球", 3, 1));
+//            subjectInfos.add(new SubjectInfo("tt", "团活", 3, 1));
 
             gi.setSubjectInfos(subjectInfos);
             Map<Integer, ClassInfo> classInfos = new HashMap<Integer, ClassInfo>();

@@ -16,14 +16,12 @@ public class WeightDefines {
         put(2.0, 2);
         put(1.5, 1);
         put(1.0, 0);
-
     }};//可排课节数阶梯权重
     public static Integer SUBJECT_SEQNO_DIFF = 5;//同日同节课程尽量不同
     public static Integer SUBJECT_CONTINUE = 30;//连堂绝对优先
     public static Integer SUBJECT_PER_DAY = 5;//平均天课节阶梯权重
     public static Integer SUBJECT_FIRST_FIXED = 2;//从未安排过的科目优先
 
-    public static Integer SUBJECT_NULL_LAST_AM = 50;
-    public static Integer SUBJECT_NULL_LAST_PM = 0;
+    public static Integer SUBJECT_NULL_POSITION = 50;
     public static Integer SUBJECT_NULL_OTHER = 100;
 }

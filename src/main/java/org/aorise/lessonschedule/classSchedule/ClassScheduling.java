@@ -468,10 +468,8 @@ public class ClassScheduling {
     private Integer nullSubjectWeight(Integer grade, Integer classNo, Integer weekDay, Integer lesssonNo, SchedulingProcessInfo schedulingProcessInfo) {
         Integer result = 0;
         if (schedulingProcessInfo.getScheduleClassInfo().getSubjectInfo().getSubjectCode().equals("wk")) {
-            if (lesssonNo == this.gradeInfoMap.get(grade).getLessonAtAM() - 1) {
-                result += WeightDefines.SUBJECT_NULL_LAST_AM;
-            } else if (lesssonNo == this.gradeInfoMap.get(grade).getLessonPerDay() - 1) {
-                result += WeightDefines.SUBJECT_NULL_LAST_PM;
+            if (lesssonNo == this.gradeInfoMap.get(grade).getNullPosition()-1) {
+                result += WeightDefines.SUBJECT_NULL_POSITION;
             } else {
                 result -= WeightDefines.SUBJECT_NULL_OTHER;
             }
@@ -484,6 +482,9 @@ public class ClassScheduling {
         Integer result = 0;
         if (weekDay == 0) {
             return result;
+        }
+        if(this.scheduleInfos.get(grade).get(classNo).get(weekDay - 1).get(lesssonNo).getSubjectInfo()==null){
+            return 0;
         }
         if (this.scheduleInfos.get(grade).get(classNo).get(weekDay - 1).get(lesssonNo).getSubjectInfo().equals(schedulingProcessInfo.getScheduleClassInfo().getSubjectInfo())) {
             result -= WeightDefines.SUBJECT_SEQNO_DIFF;
@@ -521,11 +522,17 @@ public class ClassScheduling {
         if(weekDay+1==this.gradeInfoMap.get(grade).getDayPerWeek()){
             return 0;
         }
+        if(schedulingProcessInfo.getScheduleClassInfo().getSubjectInfo()==null){
+            return 0;
+        }
         Integer result = 0;
         double avgFixed = schedulingProcessInfo.getScheduleClassInfo().getTotalCount() / 1.0 / this.gradeInfoMap.get(grade).getDayPerWeek();
         //查看当天是否已经安排
         Integer cntDayLesson = 0;
         for (Integer l = 0; l < lesssonNo; l++) {
+            if(this.scheduleInfos.get(grade).get(classNo).get(weekDay).get(l).getSubjectInfo()==null){
+                continue;
+            }
             if (this.scheduleInfos.get(grade).get(classNo).get(weekDay).get(l).getSubjectInfo().equals(schedulingProcessInfo.getScheduleClassInfo().getSubjectInfo())) {
                 cntDayLesson++;
             }
@@ -560,6 +567,9 @@ public class ClassScheduling {
         }
         Integer cntDayLesson = 0;
         for (Integer l = 0; l < lesssonNo; l++) {
+            if(this.scheduleInfos.get(grade).get(classNo).get(weekDay).get(l).getSubjectInfo()==null){
+                return 0;
+            }
             if (this.scheduleInfos.get(grade).get(classNo).get(weekDay).get(l).getSubjectInfo().equals(schedulingProcessInfo.getScheduleClassInfo().getSubjectInfo())) {
                 cntDayLesson++;
             }
