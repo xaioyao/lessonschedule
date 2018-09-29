@@ -1,6 +1,5 @@
 package org.aorise.lessonschedule.classSchedule.Model;
 
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -10,14 +9,9 @@ import java.util.Map;
 public class WeightDefines {
     public static Integer WEIGHT_BASE = 100;
     public static Integer SUBJECT_ATTRIBUTES = 6;//主副科权重
-    public static Map<Double, Integer> SUBJECT_FREE_SPACE = new LinkedHashMap<Double, Integer>() {{
-        put(5.0, 5);
-        put(3.0, 3);
-        put(2.0, 2);
-        put(1.5, 1);
-        put(1.0, 0);
-    }};//可排课节数阶梯权重
-    public static Integer SUBJECT_SEQNO_DIFF = 5;//同日同节课程尽量不同
+    public static Integer SUBJECT_FIRST_LESSON_WEIGHT=9;//第一节课主课优先级更高
+    public static Integer SUBJECT_FREE_SPACE = 2;//可排课节数阶梯权重
+    public static Integer SUBJECT_SEQNO_DIFF = 3;//同日同节课程尽量不同
     public static Integer SUBJECT_CONTINUE = 30;//连堂绝对优先
     public static Integer SUBJECT_PER_DAY = 5;//平均天课节阶梯权重
     public static Integer SUBJECT_FIRST_FIXED = 2;//从未安排过的科目优先

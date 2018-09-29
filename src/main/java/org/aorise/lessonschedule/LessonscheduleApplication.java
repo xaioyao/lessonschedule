@@ -24,16 +24,16 @@ public class LessonscheduleApplication {
         //6个年级 每个年级8个班  主课一个老师2个班  副科一个老师四个班  非文化课一个老师8个班
         //每周5天  每天7节
         for (Integer grade = 0; grade < 1; grade++) {
-            GradeInfo gi = new GradeInfo(grade, grade.toString(), 8, 5, 6, 4, 2,4);
+            GradeInfo gi = new GradeInfo(grade, grade.toString(), 7, 5, 6, 4, 2,4);
             List<SubjectInfo> subjectInfos = new ArrayList<SubjectInfo>();
             subjectInfos.add(new SubjectInfo("yw", "语文", 1, 9));
-            subjectInfos.add(new SubjectInfo("sx", "数学", 2, 4));
-            subjectInfos.add(new SubjectInfo("en", "英语", 2, 3));
+            subjectInfos.add(new SubjectInfo("sx", "数学", 1, 4));
+            subjectInfos.add(new SubjectInfo("dd", "道德", 3, 3));
+            subjectInfos.add(new SubjectInfo("ty", "体育", 3, 4));
             subjectInfos.add(new SubjectInfo("yy", "音乐", 3, 2));
-            subjectInfos.add(new SubjectInfo("xx", "信息", 2, 4));
-            subjectInfos.add(new SubjectInfo("ld", "劳动", 3, 2));
-            subjectInfos.add(new SubjectInfo("ms", "美术", 3, 1));
-            subjectInfos.add(new SubjectInfo("dl", "地理", 3, 1));
+            subjectInfos.add(new SubjectInfo("kx", "科学", 3, 1));
+            subjectInfos.add(new SubjectInfo("ms", "美术", 3, 2));
+            subjectInfos.add(new SubjectInfo("dh", "队会", 3, 1));
 
 //            subjectInfos.add(new SubjectInfo("yw", "语文", 1, 5));
 //            subjectInfos.add(new SubjectInfo("sx", "数学", 1, 5));
@@ -61,9 +61,81 @@ public class LessonscheduleApplication {
                 ClassInfo classInfo = new ClassInfo();
                 classInfo.setClassName(classNo.toString());
                 Map<SubjectInfo, String> subjectTeachers = new HashMap<SubjectInfo, String>();
-                for (SubjectInfo item : subjectInfos) {
-                    Integer c = (int) (Math.pow(2, item.getAttributes()));
-                    subjectTeachers.put(item, String.format("%s%d%d", item.getSubjectCode(), grade, classNo / c));
+//                for (SubjectInfo item : subjectInfos) {
+//                    Integer c = (int) (Math.pow(2, item.getAttributes()));
+//                    subjectTeachers.put(item, String.format("%s%d%d", item.getSubjectCode(), grade, classNo / c));
+//                }
+                switch (classNo){
+                    case 0:
+                        subjectTeachers.put(new SubjectInfo("yw", "语文", 1, 9),"111");
+                        subjectTeachers.put(new SubjectInfo("sx", "数学", 1, 4),"118");
+                        subjectTeachers.put(new SubjectInfo("dd", "道德", 3, 3),"124");
+                        subjectTeachers.put(new SubjectInfo("ty", "体育", 3, 4),"12");
+                        subjectTeachers.put(new SubjectInfo("yy", "音乐", 3, 2),"118");
+                        subjectTeachers.put(new SubjectInfo("kx", "科学", 3, 1),"120");
+                        subjectTeachers.put(new SubjectInfo("ms", "美术", 3, 2),"111");
+                        subjectTeachers.put(new SubjectInfo("dh", "队会", 3, 1),"118");
+                        break;
+                    case 1:
+                        subjectTeachers.put(new SubjectInfo("yw", "语文", 1, 9),"112");
+                        subjectTeachers.put(new SubjectInfo("sx", "数学", 1, 4),"119");
+                        subjectTeachers.put(new SubjectInfo("dd", "道德", 3, 3),"124");
+                        subjectTeachers.put(new SubjectInfo("ty", "体育", 3, 4),"123");
+                        subjectTeachers.put(new SubjectInfo("yy", "音乐", 3, 2),"118");
+                        subjectTeachers.put(new SubjectInfo("kx", "科学", 3, 1),"112");
+                        subjectTeachers.put(new SubjectInfo("ms", "美术", 3, 2),"119");
+                        subjectTeachers.put(new SubjectInfo("dh", "队会", 3, 1),"112");
+                        break;
+                    case 2:
+                        subjectTeachers.put(new SubjectInfo("yw", "语文", 1, 9),"113");
+                        subjectTeachers.put(new SubjectInfo("sx", "数学", 1, 4),"120");
+                        subjectTeachers.put(new SubjectInfo("dd", "道德", 3, 3),"124");
+                        subjectTeachers.put(new SubjectInfo("ty", "体育", 3, 4),"123");
+                        subjectTeachers.put(new SubjectInfo("yy", "音乐", 3, 2),"118");
+                        subjectTeachers.put(new SubjectInfo("kx", "科学", 3, 1),"120");
+                        subjectTeachers.put(new SubjectInfo("ms", "美术", 3, 2),"120");
+                        subjectTeachers.put(new SubjectInfo("dh", "队会", 3, 1),"120");
+                        break;
+                    case 3:
+                        subjectTeachers.put(new SubjectInfo("yw", "语文", 1, 9),"114");
+                        subjectTeachers.put(new SubjectInfo("sx", "数学", 1, 4),"119");
+                        subjectTeachers.put(new SubjectInfo("dd", "道德", 3, 3),"125");
+                        subjectTeachers.put(new SubjectInfo("ty", "体育", 3, 4),"123");
+                        subjectTeachers.put(new SubjectInfo("yy", "音乐", 3, 2),"118");
+                        subjectTeachers.put(new SubjectInfo("kx", "科学", 3, 1),"120");
+                        subjectTeachers.put(new SubjectInfo("ms", "美术", 3, 2),"119");
+                        subjectTeachers.put(new SubjectInfo("dh", "队会", 3, 1),"114");
+                        break;
+                    case 4:
+                        subjectTeachers.put(new SubjectInfo("yw", "语文", 1, 9),"115");
+                        subjectTeachers.put(new SubjectInfo("sx", "数学", 1, 4),"121");
+                        subjectTeachers.put(new SubjectInfo("dd", "道德", 3, 3),"125");
+                        subjectTeachers.put(new SubjectInfo("ty", "体育", 3, 4),"123");
+                        subjectTeachers.put(new SubjectInfo("yy", "音乐", 3, 2),"115");
+                        subjectTeachers.put(new SubjectInfo("kx", "科学", 3, 1),"121");
+                        subjectTeachers.put(new SubjectInfo("ms", "美术", 3, 2),"106");
+                        subjectTeachers.put(new SubjectInfo("dh", "队会", 3, 1),"115");
+                        break;
+                    case 5:
+                        subjectTeachers.put(new SubjectInfo("yw", "语文", 1, 9),"116");
+                        subjectTeachers.put(new SubjectInfo("sx", "数学", 1, 4),"122");
+                        subjectTeachers.put(new SubjectInfo("dd", "道德", 3, 3),"18");
+                        subjectTeachers.put(new SubjectInfo("ty", "体育", 3, 4),"113");
+                        subjectTeachers.put(new SubjectInfo("yy", "音乐", 3, 2),"54");
+                        subjectTeachers.put(new SubjectInfo("kx", "科学", 3, 1),"120");
+                        subjectTeachers.put(new SubjectInfo("ms", "美术", 3, 2),"122");
+                        subjectTeachers.put(new SubjectInfo("dh", "队会", 3, 1),"116");
+                        break;
+                    case 6:
+                        subjectTeachers.put(new SubjectInfo("yw", "语文", 1, 9),"117");
+                        subjectTeachers.put(new SubjectInfo("sx", "数学", 1, 4),"121");
+                        subjectTeachers.put(new SubjectInfo("dd", "道德", 3, 3),"121");
+                        subjectTeachers.put(new SubjectInfo("ty", "体育", 3, 4),"27");
+                        subjectTeachers.put(new SubjectInfo("yy", "音乐", 3, 2),"54");
+                        subjectTeachers.put(new SubjectInfo("kx", "科学", 3, 1),"120");
+                        subjectTeachers.put(new SubjectInfo("ms", "美术", 3, 2),"117");
+                        subjectTeachers.put(new SubjectInfo("dh", "队会", 3, 1),"117");
+                        break;
                 }
                 classInfo.setSubjectTeachers(subjectTeachers);
                 classInfos.put(classNo, classInfo);
@@ -72,7 +144,13 @@ public class LessonscheduleApplication {
             gradeInfo.put(grade, gi);
         }
         List<SchedulePositionInfo> fixedInfos=new ArrayList<SchedulePositionInfo>();
-        fixedInfos.add(new SchedulePositionInfo(0,0,0,0,new SubjectInfo("sx", "数学", 1, 5),"sx00"));
+        fixedInfos.add(new SchedulePositionInfo(0,0,4,5,new SubjectInfo("dh", "队会", 3, 1),""));
+        fixedInfos.add(new SchedulePositionInfo(0,1,4,5,new SubjectInfo("dh", "队会", 3, 1),""));
+        fixedInfos.add(new SchedulePositionInfo(0,2,4,5,new SubjectInfo("dh", "队会", 3, 1),""));
+        fixedInfos.add(new SchedulePositionInfo(0,3,4,5,new SubjectInfo("dh", "队会", 3, 1),""));
+        fixedInfos.add(new SchedulePositionInfo(0,4,4,5,new SubjectInfo("dh", "队会", 3, 1),""));
+        fixedInfos.add(new SchedulePositionInfo(0,5,4,5,new SubjectInfo("dh", "队会", 3, 1),""));
+        fixedInfos.add(new SchedulePositionInfo(0,6,4,5,new SubjectInfo("dh", "队会", 3, 1),""));
         classScheduling.setUdfFixedSubjectList(fixedInfos);
         classScheduling.setGradeInfoMap(gradeInfo);
         classScheduling.makeLessonTable();
@@ -85,6 +163,9 @@ public class LessonscheduleApplication {
                     for (Map.Entry<Integer, SchedulePositionInfo> itemItemItemItem : itemItemItem.getValue().entrySet()) {
                         if (itemItemItemItem.getValue().getSubjectInfo() != null) {
                             System.out.print(itemItemItemItem.getValue().getSubjectInfo().getSubjectName() + "  ");
+                        }
+                        else{
+                            System.out.print("--  ");
                         }
                     }
                     System.out.println();
