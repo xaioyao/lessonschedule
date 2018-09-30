@@ -19,7 +19,7 @@ public class ClassScheduling {
     private Map<Integer, Map<Integer, List<ScheduleClassInfo>>> scheduleClassInfo;//班级课程信息
     private Map<Integer, Map<Integer, Map<Integer, Map<Integer, List<SchedulingProcessInfo>>>>> scheduledInfo;//已经排课位置信息       //中间数据
     private Map<Integer, Integer> scheduledLesson;//已经安排的位置
-    private Map<Integer,Map<Integer,Integer>> classFreeSpace;//班级剩余课节数
+    private Map<Integer, Map<Integer, Integer>> classFreeSpace;//班级剩余课节数
     private List<String> teacherList;//老师列表
     private Integer gradeCount = 0;//多少个年级
     private Integer classCount = 0;//多少个班级
@@ -89,7 +89,7 @@ public class ClassScheduling {
                         }
 
                         this.addScheduldPosition(item.getKey(), itemItem.getKey(), weekDay, lessonNo);
-                        this.classFreeSpace.get(item.getKey()).put(itemItem.getKey(),this.classFreeSpace.get(item.getKey()).get(itemItem.getKey()).intValue()-1);
+                        this.classFreeSpace.get(item.getKey()).put(itemItem.getKey(), this.classFreeSpace.get(item.getKey()).get(itemItem.getKey()).intValue() - 1);
                         //处理权重
                         this.calcWeights(item.getKey(), itemItem.getKey(), weekDay, lessonNo, lessonValidSubjects);
                         //选择一门课
@@ -104,11 +104,14 @@ public class ClassScheduling {
                     }
                 }
                 //班级课程安排完成后，如果有未排课区域，则做自动调课，保证在没有极端冲突的情况下，把课排满
-               this.autoMicroChangeLesson(item.getKey(), itemItem.getKey());
+                this.autoMicroChangeLesson(item.getKey(), itemItem.getKey());
+                //跨班级处理未排课区域
+                //this.crossClassAutoMicroChange(item.getKey(), itemItem.getKey());
             }
         }
         return true;
     }
+
 
     //安排外部设置只有一门可选科目的位置
     private void firstSetUdfOnlyOneSubject(List<SchedulePositionInfo> positionInfos) {
@@ -141,16 +144,250 @@ public class ClassScheduling {
         return result;
     }
 
+    private boolean isSubjectInScheduleProcessList(SubjectInfo info, List<SchedulingProcessInfo> infos) {
+        for (SchedulingProcessInfo item : infos) {
+            if (item.getScheduleClassInfo().getSubjectInfo().equals(info)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isInfoInScheduleProcessList(SchedulingProcessInfo info, List<SchedulingProcessInfo> infos) {
+        for (SchedulingProcessInfo item : infos) {
+            if (item.equals(info)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     //此位置可以安排的科目
     private List<SchedulingProcessInfo> fetchMicroChangeSubjectValids(Integer grade, Integer classNo, Integer weekDay, Integer lessonNo) {
         List<SchedulingProcessInfo> result = new ArrayList<SchedulingProcessInfo>();
         for (SchedulingProcessInfo item : this.scheduledInfo.get(grade).get(classNo).get(weekDay).get(lessonNo)) {
+            if (item.getScheduleClassInfo().getSubjectInfo().getSubjectCode() == "wk") {
+                continue;
+            }
             Integer reason = item.getCannotSelReason();
             if (reason != 1) {
+                int cntDayLesson = 0;
+                for (Integer idx = 0; idx < this.gradeInfoMap.get(grade).getLessonPerDay(); idx++) {
+                    if (idx == lessonNo) {
+                        continue;
+                    }
+                    if (this.scheduleInfos.get(grade).get(classNo).get(weekDay).get(idx).getSubjectInfo() == null) {
+                        continue;
+                    }
+                    if (this.scheduleInfos.get(grade).get(classNo).get(weekDay).get(idx).getSubjectInfo().equals(item.getScheduleClassInfo().getSubjectInfo())) {
+                        cntDayLesson++;
+                    }
+                }
+                if (cntDayLesson >= item.getScheduleClassInfo().getTotalCount() / 1.0 / this.gradeInfoMap.get(grade).getDayPerWeek()) {
+                    continue;
+                }
                 result.add(item);
             }
         }
         return result;
+    }
+
+
+    //调换同一班级两个位置的课程,调换不是exceptTeacher老师上的课
+    private boolean changeLesson(Integer grade, Integer classNo, Integer SourceWeekDay, Integer SourceLessonNo, Integer DestWeekDay, Integer DestLessonNo,
+                                 String exceptTeacher, SchedulePositionInfo source, SchedulePositionInfo dest) {
+        //获取源位置可以安排的科目列表
+        List<SchedulingProcessInfo> sourceCanSelectSubjects = this.fetchMicroChangeSubjectValids(grade, classNo, SourceWeekDay, SourceLessonNo);
+        //获取目标位置可以安排的科目列表
+        List<SchedulingProcessInfo> destCanSelectSubjects = this.fetchMicroChangeSubjectValids(grade, classNo, DestWeekDay, DestLessonNo);
+        if (sourceCanSelectSubjects.size() <= 0 || destCanSelectSubjects.size() <= 0) {
+            return false;
+        }
+
+        boolean canChangeDestPos = false;
+        boolean canChangeSourcePos = false;
+        for (SchedulingProcessInfo subjectS : sourceCanSelectSubjects) {//判断目标位置科目是否可以放在源位置
+            if (subjectS.getScheduleClassInfo().getSubjectInfo().equals(dest.getSubjectInfo())) {
+                canChangeSourcePos = true;
+                break;
+            }
+        }
+        //canChangeSubjects包含item,已经排好的位置可以安排没有安排满的课程
+        for (SchedulingProcessInfo subjectD : destCanSelectSubjects) {
+            if (this.fetchTeacherByKemuAndLesson(grade, classNo, subjectD.getScheduleClassInfo().getSubjectInfo().getSubjectName()) == exceptTeacher) {
+                continue;
+            }
+            if (subjectD.getScheduleClassInfo().getSubjectInfo().equals(source.getSubjectInfo())) {
+                canChangeDestPos = true;
+                break;
+            }
+        }
+        if (!canChangeDestPos || !canChangeSourcePos) {
+            return false;
+        }
+        return true;
+    }
+
+    //调换同一班级两个位置的课程
+    private boolean changeLesson(Integer grade, Integer classNo, Integer SourceWeekDay, Integer SourceLessonNo, Integer DestWeekDay, Integer DestLessonNo,
+                                 SchedulePositionInfo source, SchedulePositionInfo dest) {
+        //获取源位置可以安排的科目列表
+        List<SchedulingProcessInfo> sourceCanSelectSubjects = this.fetchMicroChangeSubjectValids(grade, classNo, SourceWeekDay, SourceLessonNo);
+        //获取目标位置可以安排的科目列表
+        List<SchedulingProcessInfo> destCanSelectSubjects = this.fetchMicroChangeSubjectValids(grade, classNo, DestWeekDay, DestLessonNo);
+        if (sourceCanSelectSubjects.size() <= 0 || destCanSelectSubjects.size() <= 0) {
+            return false;
+        }
+        boolean canChangeDestPos = false;
+        boolean canChangeSourcePos = false;
+        for (SchedulingProcessInfo subjectS : sourceCanSelectSubjects) {//判断目标位置科目是否可以放在源位置
+            if (subjectS.getScheduleClassInfo().getSubjectInfo().equals(dest.getSubjectInfo())) {
+                canChangeSourcePos = true;
+                break;
+            }
+        }
+        //canChangeSubjects包含item,已经排好的位置可以安排没有安排满的课程
+        for (SchedulingProcessInfo subjectD : destCanSelectSubjects) {
+            if (subjectD.getScheduleClassInfo().getSubjectInfo().equals(source.getSubjectInfo())) {
+                canChangeDestPos = true;
+                break;
+            }
+        }
+        if (!canChangeDestPos || !canChangeSourcePos) {
+            return false;
+        }
+        this.setScheduleTable(grade, classNo, SourceWeekDay, SourceLessonNo, dest);
+        this.setScheduleTable(grade, classNo, DestWeekDay, DestLessonNo, source);
+        return true;
+    }
+
+    //跨班级微调
+    private void crossClassAutoMicroChange(Integer grade, Integer classNo) {
+        for (Integer weekDay = 0; weekDay < this.gradeInfoMap.get(grade).getDayPerWeek(); weekDay++) {
+            for (Integer lessonNo = 0; lessonNo < this.gradeInfoMap.get(grade).getLessonPerDay(); lessonNo++) {
+                if (this.scheduleInfos.get(grade).get(classNo).get(weekDay).get(lessonNo).getSubjectInfo() == null) {//如果未排课
+                    /*
+                    1、获取需要排课的科目
+                    2、遍历科目
+                    3、获取影响此位置的源位置
+                    4、调换原位置的非此老师的科目
+                     */
+                    List<SchedulingProcessInfo> unFixedSubjects = this.fetchMicroChangeSubjectCanSelect(grade, classNo, weekDay, lessonNo);
+                    //获取此位置可安排科目列表
+                    List<SchedulingProcessInfo> hereCanSelect = this.fetchMicroChangeSubjectValids(grade, classNo, weekDay, lessonNo);
+                    if (unFixedSubjects.size() <= 0) {
+                        return;
+                    }
+                    for (SchedulingProcessInfo subjectC : unFixedSubjects) {
+                        /*
+                         *  如果此位置不可以安排此科目，则先将本天其他位置的此科目移走，在执行后续程序
+                         *  如果无法移走，则跳过
+                         */
+
+                        //获取这一天此科目已经安排的位置情况
+                        List<SchedulePositionInfo> subjectFixInDay = new ArrayList<SchedulePositionInfo>();
+                        for (Map.Entry<Integer, SchedulePositionInfo> pos : this.scheduleInfos.get(grade).get(classNo).get(weekDay).entrySet()) {
+                            if (pos.getValue().getSubjectInfo() != null) {
+                                if (pos.getValue().getSubjectInfo().equals(subjectC.getScheduleClassInfo().getSubjectInfo())) {
+                                    subjectFixInDay.add(pos.getValue());
+                                }
+                            }
+                        }
+                        //如果已经安排的课数小于平均课节数，则说明不是因为同天课程数原因导致无法安排
+                        if (subjectFixInDay.size() / 1.0 >= subjectC.getScheduleClassInfo().getTotalCount() / 1.0 / this.gradeInfoMap.get(grade).getDayPerWeek()) {
+                            //遍历subjectFixInDay位置，尝试将原来的安排的此科目的课程移走，未未安排的课提供条件
+                            boolean canBreak = false;
+                            for (SchedulePositionInfo subjectInfo : subjectFixInDay) {
+                                for (Integer weekDaySub = 0; weekDaySub < this.gradeInfoMap.get(grade).getDayPerWeek(); weekDaySub++) {
+                                    for (Integer lessonNoSub = 1; lessonNoSub < this.gradeInfoMap.get(grade).getLessonPerDay(); lessonNoSub++) {
+                                        boolean isUdfFixedPos = false;
+                                        for (SchedulePositionInfo sp : this.udfFixedSubjectList) {
+                                            if (sp.getGrade() == grade && sp.getClassNo() == classNo && sp.getWeekDay() == weekDaySub && sp.getSeqNo() == lessonNoSub) {
+                                                isUdfFixedPos = true;
+                                                break;
+                                            }
+                                        }
+                                        if (isUdfFixedPos) {
+                                            continue;
+                                        }
+                                        SchedulePositionInfo sourceLesson = new SchedulePositionInfo(subjectInfo);
+                                        SchedulePositionInfo destLesson = new SchedulePositionInfo(this.scheduleInfos.get(grade).get(classNo).get(weekDaySub).get(lessonNoSub));
+                                        if (sourceLesson.getSubjectInfo().equals(destLesson.getSubjectInfo())) {
+                                            continue;
+                                        }
+                                        if (this.changeLesson(
+                                                grade,
+                                                classNo,
+                                                subjectInfo.getWeekDay(),
+                                                subjectInfo.getSeqNo(),
+                                                weekDaySub,
+                                                lessonNoSub,
+                                                "",
+                                                sourceLesson, destLesson
+                                        )) {
+                                            this.setScheduleTable(grade, classNo, subjectInfo.getWeekDay(), subjectInfo.getSeqNo(), destLesson);
+                                            this.setScheduleTable(grade, classNo, weekDaySub, lessonNoSub, sourceLesson);
+                                            canBreak = true;
+                                            break;
+                                        }
+                                    }
+                                    if (canBreak) {
+                                        break;
+                                    }
+                                }
+                                if (canBreak) {
+                                    break;
+                                }
+                            }
+
+                        }
+                        SchedulePositionInfo conflictPos = subjectC.getPositionInfo();//冲突的源位置
+                        if (conflictPos == null) {
+                            continue;
+                        }
+                        //调换此科目的位置
+                        //遍历源科目班级课表
+                        for (Integer weekDay1 = 0; weekDay1 < this.gradeInfoMap.get(conflictPos.getGrade()).getDayPerWeek(); weekDay1++) {//遍历待替换的位置
+                            for (Integer lessonNo1 = 1; lessonNo1 < this.gradeInfoMap.get(conflictPos.getGrade()).getLessonPerDay(); lessonNo1++) {
+                                boolean isUdfFixedPos = false;
+                                for (SchedulePositionInfo sp : this.udfFixedSubjectList) {
+                                    if (sp.getGrade() == grade && sp.getClassNo() == classNo && sp.getWeekDay() == weekDay1 && sp.getSeqNo() == lessonNo1) {
+                                        isUdfFixedPos = true;
+                                        break;
+                                    }
+                                }
+                                if (isUdfFixedPos) {
+                                    continue;
+                                }
+
+                                SchedulePositionInfo sourceLesson = new SchedulePositionInfo(this.scheduleInfos.get(conflictPos.getGrade()).get(conflictPos.getClassNo()).get(conflictPos.getWeekDay()).get(conflictPos.getSeqNo()));
+                                SchedulePositionInfo destLesson = new SchedulePositionInfo(this.scheduleInfos.get(conflictPos.getGrade()).get(conflictPos.getClassNo()).get(weekDay1).get(lessonNo1));
+                                if (sourceLesson.getSubjectInfo().equals(destLesson.getSubjectInfo())) {
+                                    continue;
+                                }
+                                if (this.changeLesson(
+                                        conflictPos.getGrade(),
+                                        conflictPos.getClassNo(),
+                                        conflictPos.getWeekDay(),
+                                        conflictPos.getSeqNo(),
+                                        weekDay1,
+                                        lessonNo1,
+                                        sourceLesson.getTeacher(),
+                                        sourceLesson, destLesson
+                                )) {
+                                    //如果换课成功，则调换原来要调换的科目
+
+                                    this.setScheduleTable(conflictPos.getGrade(), conflictPos.getClassNo(), conflictPos.getWeekDay(), conflictPos.getSeqNo(), destLesson);
+                                    this.setScheduleTable(conflictPos.getGrade(), conflictPos.getClassNo(), weekDay1, lessonNo1, sourceLesson);
+                                    this.setScheduleTable(grade, classNo, weekDay, lessonNo, subjectC);
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     //自动微调
@@ -163,54 +400,36 @@ public class ClassScheduling {
                     continue;
                 }
                 //获取可以安排的科目列表
-                List<SchedulingProcessInfo> canSelectSubjects = this.fetchMicroChangeSubjectValids(grade, classNo, weekDay, lessonNo);
                 List<SchedulingProcessInfo> unFixedSubjects = this.fetchMicroChangeSubjectCanSelect(grade, classNo, weekDay, lessonNo);
-                if (canSelectSubjects.size() <= 0) {
-                    return;
-                }
+
                 //遍历科目
+                boolean canBreak = false;
                 for (SchedulingProcessInfo subjectC : unFixedSubjects) {
                     //遍历预备调换位置（调换下午的课程）
                     for (Integer weekDay1 = 0; weekDay1 < this.gradeInfoMap.get(grade).getDayPerWeek(); weekDay1++) {//遍历待替换的位置
-                        for (Integer lessonNo1 = this.gradeInfoMap.get(grade).getLessonAtAM(); lessonNo1 < this.gradeInfoMap.get(grade).getLessonPerDay(); lessonNo1++) {
-                        //for (Integer lessonNo1 = 1; lessonNo1 < this.gradeInfoMap.get(grade).getLessonPerDay(); lessonNo1++) {
-                            for(SchedulePositionInfo sp:this.udfFixedSubjectList){
-                                if(sp.getGrade()==grade&&sp.getClassNo()==classNo&&sp.getWeekDay()==weekDay1&&sp.getSeqNo()==lessonNo1){
-                                    continue;
+                        //for (Integer lessonNo1 = this.gradeInfoMap.get(grade).getLessonAtAM(); lessonNo1 < this.gradeInfoMap.get(grade).getLessonPerDay(); lessonNo1++) {
+                        for (Integer lessonNo1 = 1; lessonNo1 < this.gradeInfoMap.get(grade).getLessonPerDay(); lessonNo1++) {
+                            boolean isUdfFixedPos = false;
+                            for (SchedulePositionInfo sp : this.udfFixedSubjectList) {
+                                if (sp.getGrade() == grade && sp.getClassNo() == classNo && sp.getWeekDay() == weekDay1 && sp.getSeqNo() == lessonNo1) {
+                                    isUdfFixedPos = true;
+                                    break;
                                 }
                             }
-                            //此位置可安排的课程
-                            List<SchedulingProcessInfo> canChangeSubjects = this.fetchMicroChangeSubjectValids(grade, classNo, weekDay1, lessonNo1);
-                            if (canChangeSubjects.size() <= 0) {
+                            if (isUdfFixedPos) {
                                 continue;
                             }
-                            canChangeDestPos = false;
-                            canChangeSourcePos = false;
-                            SchedulingProcessInfo sourceSubject = null;
-                            SchedulingProcessInfo destSubject = null;
-                            SchedulePositionInfo destInfo = this.scheduleInfos.get(grade).get(classNo).get(weekDay1).get(lessonNo1);
-                            for (SchedulingProcessInfo subjectS : canSelectSubjects) {
-                                if (subjectS.getScheduleClassInfo().getSubjectInfo().equals(destInfo.getSubjectInfo())) {
-                                    canChangeSourcePos = true;
-                                    sourceSubject = subjectS;
-                                    break;
-                                }
-                            }
-                            //canChangeSubjects包含item,已经排好的位置可以安排没有安排满的课程
-                            for (SchedulingProcessInfo subjectD : canChangeSubjects) {
-                                if (subjectD.getScheduleClassInfo().getSubjectInfo().equals(subjectC.getScheduleClassInfo().getSubjectInfo())) {
-                                    canChangeDestPos = true;
-                                    destSubject = subjectD;
-                                    break;
-                                }
-                            }
-                            if (canChangeDestPos && canChangeSourcePos) {
-                                this.setScheduleTable(grade, classNo, weekDay, lessonNo, sourceSubject);
-                                this.setScheduleTable(grade, classNo, weekDay1, lessonNo1, destSubject);
-                                return;
+                            if (this.changeLesson(grade, classNo, weekDay, lessonNo, weekDay1, lessonNo1,
+                                    new SchedulePositionInfo(grade, classNo, weekDay, lessonNo, subjectC.getScheduleClassInfo().getSubjectInfo(),
+                                            this.fetchTeacherByKemuAndLesson(grade, classNo, subjectC.getScheduleClassInfo().getSubjectInfo().getSubjectName())),
+                                    this.scheduleInfos.get(grade).get(classNo).get(weekDay1).get(lessonNo1))) {
+                                canBreak = true;
+                                break;
                             }
                         }
+                        if(canBreak){break;}
                     }
+                    if(canBreak){break;}
                 }
             }
         }
@@ -261,8 +480,10 @@ public class ClassScheduling {
                 if ((item.getKey() > grade) || (item.getKey() == grade && itemItem.getKey() > classNo)) {
                     this.reduceFreeSpaceCount(item.getKey(), itemItem.getKey(), weekDay, lesssonNo, teacher, schedulingProcessInfo);
                 }
+                //记录不能排课的原因（同老师其他位置上课，导致不能在本节安排）
             }
         }
+
         //减少本班剩余课节的freeSpace
         this.reduceSelfFreeSpaceCount(grade, classNo, weekDay, lesssonNo, teacher, schedulingProcessInfo);
         //减少可排课节数
@@ -270,11 +491,11 @@ public class ClassScheduling {
         //处理老师课表
         this.recordTeacherSchedule(grade, classNo, weekDay, lesssonNo, teacher, schedulingProcessInfo);
         //处理各个位置科目可以选择情况
-        this.processScheduleSubjectInfo(grade, classNo, weekDay, lesssonNo);
+        this.processScheduleSubjectInfo(grade, classNo, weekDay, lesssonNo, teacher);
     }
 
     //处理单个位置可选科目情况
-    private void processScheduleSubjectInfo(Integer grade, Integer classNo, Integer weekDay, Integer lesssonNo) {
+    private void processScheduleSubjectInfo(Integer grade, Integer classNo, Integer weekDay, Integer lesssonNo, String teacher) {
         for (Map.Entry<Integer, Map<Integer, Map<Integer, Map<Integer, SchedulePositionInfo>>>> item : this.scheduleInfos.entrySet()) {
             for (Map.Entry<Integer, Map<Integer, Map<Integer, SchedulePositionInfo>>> itemItem : item.getValue().entrySet()) {
                 for (Map.Entry<Integer, Map<Integer, SchedulePositionInfo>> itemItemItem : itemItem.getValue().entrySet()) {
@@ -294,6 +515,14 @@ public class ClassScheduling {
                                 info.setCannotSelReason(1);
                                 info.setCanSelect(false);
                             }
+
+                            //如果此科目的老师和已经安排的科目一直，则设置position
+                            if (weekDay == itemItemItem.getKey() && lesssonNo == itemItemItemItem.getKey()) {
+                                if (teacher.equals(this.fetchTeacherByKemuAndLesson(item.getKey(), itemItem.getKey(), info.getScheduleClassInfo().getSubjectInfo().getSubjectName()))) {
+                                    info.setPositionInfo(new SchedulePositionInfo(grade, classNo, weekDay, lesssonNo, info.getScheduleClassInfo().getSubjectInfo(), teacher));
+                                }
+                            }
+
                             if (info.getCannotSelReason() == 0) {
                                 if (info.getScheduleClassInfo().getUnUsedCount() == 0) {
                                     info.setCannotSelReason(2);
@@ -437,7 +666,7 @@ public class ClassScheduling {
     private void calcWeights(Integer grade, Integer classNo, Integer weekDay, Integer lesssonNo, List<SchedulingProcessInfo> schedulingProcessInfos) {
         this.maxWeight = 0;
         for (SchedulingProcessInfo item : schedulingProcessInfos) {
-            Integer wPlus = this.calcWeight(grade, classNo, weekDay, lesssonNo, schedulingProcessInfos.size(),item);
+            Integer wPlus = this.calcWeight(grade, classNo, weekDay, lesssonNo, schedulingProcessInfos.size(), item);
             item.setWeights(item.getWeights() + wPlus);
             if (item.getWeights() > this.maxWeight) {
                 this.maxWeight = item.getWeights();
@@ -446,7 +675,7 @@ public class ClassScheduling {
     }
 
     //计算每个科目的权重
-    private Integer calcWeight(Integer grade, Integer classNo, Integer weekDay, Integer lesssonNo,Integer subjectCount, SchedulingProcessInfo schedulingProcessInfo) {
+    private Integer calcWeight(Integer grade, Integer classNo, Integer weekDay, Integer lesssonNo, Integer subjectCount, SchedulingProcessInfo schedulingProcessInfo) {
         Integer result = 0;
         /*
          * 1、计算上下午主副课权重，课程位置、科目、上下午
@@ -460,7 +689,7 @@ public class ClassScheduling {
         result += this.amPmWeight(grade, lesssonNo, schedulingProcessInfo);//上下午权重
         result += this.lessonContinueWeight(grade, classNo, weekDay, lesssonNo, schedulingProcessInfo);
         result += this.avgWeekDayWeight(grade, classNo, weekDay, lesssonNo, schedulingProcessInfo);
-        result += this.spacePlaceWeight(grade, classNo, weekDay, lesssonNo,subjectCount, schedulingProcessInfo);
+        result += this.spacePlaceWeight(grade, classNo, weekDay, lesssonNo, subjectCount, schedulingProcessInfo);
         result += this.unFixedSubjectWeight(schedulingProcessInfo);
         result += this.notSameSubjectWeight(grade, classNo, weekDay, lesssonNo, schedulingProcessInfo);
         result += this.nullSubjectWeight(grade, classNo, weekDay, lesssonNo, schedulingProcessInfo);
@@ -510,28 +739,30 @@ public class ClassScheduling {
     }
 
     //可排位置权重
-    private Integer spacePlaceWeight(Integer grade, Integer classNo, Integer weekDay, Integer lesssonNo, Integer subjectCount,SchedulingProcessInfo schedulingProcessInfo) {
+    private Integer spacePlaceWeight(Integer grade, Integer classNo, Integer weekDay, Integer lesssonNo, Integer subjectCount, SchedulingProcessInfo schedulingProcessInfo) {
         Integer result = 0;
         Integer unFixedPlaceCount = this.classFreeSpace.get(grade).get(classNo).intValue();
 
         double freeSpaceRate = schedulingProcessInfo.getScheduleClassInfo().getFreeSpace() / unFixedPlaceCount;
-        if(freeSpaceRate/1.0/unFixedPlaceCount<=0.8){
-            result +=WeightDefines.SUBJECT_FREE_SPACE;
+        if (freeSpaceRate / 1.0 / unFixedPlaceCount <= 0.8) {
+            result += WeightDefines.SUBJECT_FREE_SPACE;
         }
-        if(schedulingProcessInfo.getScheduleClassInfo().getUnUsedCount()>unFixedPlaceCount/1.0/this.gradeInfoMap.get(grade).getSubjectInfos().size()){
-            result+=WeightDefines.SUBJECT_FREE_SPACE;
+        if (schedulingProcessInfo.getScheduleClassInfo().getUnUsedCount() > unFixedPlaceCount / 1.0 / this.gradeInfoMap.get(grade).getSubjectInfos().size()) {
+            result += WeightDefines.SUBJECT_FREE_SPACE;
         }
-        if(schedulingProcessInfo.getScheduleClassInfo().getUnUsedCount()>=this.gradeInfoMap.get(grade).getDayPerWeek()-weekDay){
-            result+=WeightDefines.SUBJECT_FREE_SPACE*2;
+        if (schedulingProcessInfo.getScheduleClassInfo().getUnUsedCount() >= this.gradeInfoMap.get(grade).getDayPerWeek() - weekDay) {
+            result += WeightDefines.SUBJECT_FREE_SPACE * 2;
         }
         return result;
     }
 
     //平均课节权重
     private Integer avgWeekDayWeight(Integer grade, Integer classNo, Integer weekDay, Integer lesssonNo, SchedulingProcessInfo schedulingProcessInfo) {
+        //最后一天 此权重已经无意义
         if (weekDay + 1 == this.gradeInfoMap.get(grade).getDayPerWeek()) {
             return 0;
         }
+        //无课科目
         if (schedulingProcessInfo.getScheduleClassInfo().getSubjectInfo() == null) {
             return 0;
         }
@@ -549,10 +780,15 @@ public class ClassScheduling {
         double avgFixed = schedulingProcessInfo.getScheduleClassInfo().getTotalCount() / 1.0 / this.gradeInfoMap.get(grade).getDayPerWeek();
         //double avgUnFixed = (schedulingProcessInfo.getScheduleClassInfo().getUnUsedCount() - cntDayLesson) / 1.0 / (this.gradeInfoMap.get(grade).getDayPerWeek() - weekDay);
 
+        //今天已安排节数和平均节数对比
         if (cntDayLesson < avgFixed) {
             result += WeightDefines.SUBJECT_PER_DAY;
-        }else{
+        } else {
             result -= WeightDefines.SUBJECT_PER_DAY;
+        }
+        //如果剩余的天数已经不够安排,即剩余课节除以剩余天数大于等于平均课节向上取整
+        if (schedulingProcessInfo.getScheduleClassInfo().getUnUsedCount() / 1.0 / (this.gradeInfoMap.get(grade).getDayPerWeek() - weekDay - 1) > Math.ceil(avgFixed)) {
+            result += WeightDefines.SUBJECT_PER_DAY;
         }
         return result;
     }
@@ -623,16 +859,16 @@ public class ClassScheduling {
             //检查老师是否在其他班任课
             if (si.getCannotSelReason() == 0) {
                 //检查当天次节课已经上了的次数，如果次数大于平均数  则不拍此科目
-                Integer cntDayLesson=0;
-                for(Integer idx=0;idx<lesssonNo;idx++){
-                    if(this.scheduleInfos.get(grade).get(classNo).get(weekDay).get(idx).getSubjectInfo()!=null){
-                        if(this.scheduleInfos.get(grade).get(classNo).get(weekDay).get(idx).getSubjectInfo().equals(si.getScheduleClassInfo().getSubjectInfo())){
+                Integer cntDayLesson = 0;
+                for (Integer idx = 0; idx < lesssonNo; idx++) {
+                    if (this.scheduleInfos.get(grade).get(classNo).get(weekDay).get(idx).getSubjectInfo() != null) {
+                        if (this.scheduleInfos.get(grade).get(classNo).get(weekDay).get(idx).getSubjectInfo().equals(si.getScheduleClassInfo().getSubjectInfo())) {
                             cntDayLesson++;
                         }
                     }
                 }
 
-                if(cntDayLesson>si.getScheduleClassInfo().getTotalCount()/1.0/this.gradeInfoMap.get(grade).getDayPerWeek()){
+                if (cntDayLesson / 1.0 >= si.getScheduleClassInfo().getTotalCount() / 1.0 / this.gradeInfoMap.get(grade).getDayPerWeek()) {
                     continue;
                 }
                 result.add(si);
@@ -749,17 +985,16 @@ public class ClassScheduling {
     }
 
 
-
     //初始化课表信息
     private boolean initLessonTableInfo(Map<Integer, GradeInfo> gradeInfo) {
         this.scheduleInfos = new HashMap<Integer, Map<Integer, Map<Integer, Map<Integer, SchedulePositionInfo>>>>();
         this.classFreeSpace = new HashMap<Integer, Map<Integer, Integer>>();
         for (Map.Entry<Integer, GradeInfo> item : gradeInfo.entrySet()) {
             Map<Integer, Map<Integer, Map<Integer, SchedulePositionInfo>>> grade = new HashMap<Integer, Map<Integer, Map<Integer, SchedulePositionInfo>>>();
-            Map<Integer, Integer> classFS=new HashMap<Integer, Integer>();
+            Map<Integer, Integer> classFS = new HashMap<Integer, Integer>();
             for (Map.Entry<Integer, ClassInfo> itemItem : item.getValue().getClassInfos().entrySet()) {
                 Map<Integer, Map<Integer, SchedulePositionInfo>> classs = new HashMap<Integer, Map<Integer, SchedulePositionInfo>>();
-                classFS.put(itemItem.getKey(),item.getValue().getDayPerWeek()*item.getValue().getLessonPerDay());
+                classFS.put(itemItem.getKey(), item.getValue().getDayPerWeek() * item.getValue().getLessonPerDay());
                 for (Integer weekDay = 0; weekDay < item.getValue().getDayPerWeek(); weekDay++) {
                     Map<Integer, SchedulePositionInfo> weekLesson = new HashMap<Integer, SchedulePositionInfo>();
                     for (Integer lessonNo = 0; lessonNo < item.getValue().getLessonPerDay(); lessonNo++) {
@@ -770,7 +1005,7 @@ public class ClassScheduling {
                 }
                 grade.put(itemItem.getKey(), classs);
             }
-            this.classFreeSpace.put(item.getKey(),classFS);
+            this.classFreeSpace.put(item.getKey(), classFS);
             this.scheduleInfos.put(item.getKey(), grade);
         }
         return true;

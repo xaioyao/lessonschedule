@@ -22,4 +22,13 @@ public class SchedulePositionInfo {
         this.subjectInfo=si;
         this.teacher=t;
     }
+
+    public SchedulePositionInfo(SchedulePositionInfo s){
+        this.grade=s.getGrade();
+        this.classNo=s.getClassNo();
+        this.weekDay=s.getWeekDay();
+        this.seqNo=s.getSeqNo();
+        this.subjectInfo=s.getSubjectInfo();
+        this.teacher=s.getTeacher();
+    }
 }
