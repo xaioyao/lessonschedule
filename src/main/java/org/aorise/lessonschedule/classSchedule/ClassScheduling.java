@@ -194,6 +194,9 @@ public class ClassScheduling {
     //调换同一班级两个位置的课程
     private boolean changeLesson(Integer grade, Integer classNo, Integer SourceWeekDay, Integer SourceLessonNo, Integer DestWeekDay, Integer DestLessonNo,
                                  SchedulePositionInfo source, SchedulePositionInfo dest) {
+        if(source.getSubjectInfo().equals(dest.getSubjectInfo())){
+            return false;
+        }
         //获取源位置可以安排的科目列表
         List<SchedulingProcessInfo> sourceCanSelectSubjects = this.fetchMicroChangeSubjectValids(grade, classNo, SourceWeekDay, SourceLessonNo, false);
         //获取目标位置可以安排的科目列表
