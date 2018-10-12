@@ -194,16 +194,16 @@ public class ClassScheduling {
     //调换同一班级两个位置的课程
     private boolean changeLesson(Integer grade, Integer classNo, Integer SourceWeekDay, Integer SourceLessonNo, Integer DestWeekDay, Integer DestLessonNo,
                                  SchedulePositionInfo source, SchedulePositionInfo dest) {
-        if(source.getSubjectInfo().equals(dest.getSubjectInfo())){
+        if (source.getSubjectInfo().equals(dest.getSubjectInfo())) {
             return false;
         }
         //获取源位置可以安排的科目列表
         List<SchedulingProcessInfo> sourceCanSelectSubjects = this.fetchMicroChangeSubjectValids(grade, classNo, SourceWeekDay, SourceLessonNo, false);
         //获取目标位置可以安排的科目列表
         List<SchedulingProcessInfo> destCanSelectSubjects = this.fetchMicroChangeSubjectValids(grade, classNo, DestWeekDay, DestLessonNo, false);
-        if(SourceWeekDay==DestWeekDay){
-            for(SchedulingProcessInfo item:this.scheduledInfo.get(grade).get(classNo).get(SourceWeekDay).get(SourceLessonNo)){
-                if(item.getScheduleClassInfo().getSubjectInfo().equals(dest.getSubjectInfo())){
+        if (SourceWeekDay == DestWeekDay) {
+            for (SchedulingProcessInfo item : this.scheduledInfo.get(grade).get(classNo).get(SourceWeekDay).get(SourceLessonNo)) {
+                if (item.getScheduleClassInfo().getSubjectInfo().equals(dest.getSubjectInfo())) {
                     sourceCanSelectSubjects.add(item);
                     break;
                 }
@@ -262,14 +262,14 @@ public class ClassScheduling {
                             if (isUdfFixedPos) {
                                 continue;
                             }
-                            SchedulePositionInfo source=new SchedulePositionInfo(grade, classNo, weekDay, lessonNo, subjectC.getScheduleClassInfo().getSubjectInfo(),
+                            SchedulePositionInfo source = new SchedulePositionInfo(grade, classNo, weekDay, lessonNo, subjectC.getScheduleClassInfo().getSubjectInfo(),
                                     this.fetchTeacherByKemuAndLesson(grade, classNo, subjectC.getScheduleClassInfo().getSubjectInfo().getSubjectName()));
                             if (this.changeLesson(grade, classNo, weekDay, lessonNo, weekDay1, lessonNo1,
                                     source,
                                     this.scheduleInfos.get(grade).get(classNo).get(weekDay1).get(lessonNo1))) {
 
-                                this.setScheduleTable(grade, classNo, weekDay, lessonNo,this.scheduleInfos.get(grade).get(classNo).get(weekDay1).get(lessonNo1));
-                                this.setScheduleTable(grade, classNo, weekDay1, lessonNo1,source);
+                                this.setScheduleTable(grade, classNo, weekDay, lessonNo, this.scheduleInfos.get(grade).get(classNo).get(weekDay1).get(lessonNo1));
+                                this.setScheduleTable(grade, classNo, weekDay1, lessonNo1, source);
 
                                 this.reduceSelfCanUseCount(grade, classNo, weekDay, lessonNo,
                                         this.fetchTeacherByKemuAndLesson(grade, classNo, subjectC.getScheduleClassInfo().getSubjectInfo().getSubjectName())
@@ -502,7 +502,7 @@ public class ClassScheduling {
          */
         List<SchedulingProcessInfo> canChooseSubjects = new ArrayList<SchedulingProcessInfo>();
         for (SchedulingProcessInfo item : schedulingProcessInfos) {
-            if (item.getWeights() == this.maxWeight) {
+            if (item.getWeights().equals(this.maxWeight)) {
                 canChooseSubjects.add(item);
             }
         }
@@ -539,20 +539,40 @@ public class ClassScheduling {
          * 6、计算老师平均安排权重             当天老师课节数、平均课节数
          * 7、计算自定义规则权重
          * */
-        result += this.amPmWeight(grade, lesssonNo, schedulingProcessInfo);//上下午权重
-        result += this.lessonContinueWeight(grade, classNo, weekDay, lesssonNo, schedulingProcessInfo);
-        result += this.avgWeekDayWeight(grade, classNo, weekDay, lesssonNo, schedulingProcessInfo);
-        result += this.spacePlaceWeight(grade, classNo, weekDay, lesssonNo, subjectCount, schedulingProcessInfo);
-        result += this.unFixedSubjectWeight(schedulingProcessInfo);
+        //第一节主课权重统一
+        if (lesssonNo < 3) {
+            if (schedulingProcessInfo.getScheduleClassInfo().getSubjectInfo().getAttributes() == 1) {
+                result = WeightDefines.SUBJECT_FIRST_LESSON_WEIGHT_BASE;
+                result+=this.mainSubjectAvgFirstLessson(grade, classNo, weekDay, lesssonNo, schedulingProcessInfo);
+            }
+        }else{
+            result += this.amPmWeight(grade, lesssonNo, schedulingProcessInfo);//上下午权重
+            result += this.avgWeekDayWeight(grade, classNo, weekDay, lesssonNo, schedulingProcessInfo);
+            result += this.spacePlaceWeight(grade, classNo, weekDay, lesssonNo, subjectCount, schedulingProcessInfo);
+            result += this.unFixedSubjectWeight(schedulingProcessInfo);
+            result += this.nullSubjectWeight(grade, classNo, weekDay, lesssonNo, schedulingProcessInfo);
+        }
         result += this.notSameSubjectWeight(grade, classNo, weekDay, lesssonNo, schedulingProcessInfo);
-        result += this.nullSubjectWeight(grade, classNo, weekDay, lesssonNo, schedulingProcessInfo);
+        result += this.lessonContinueWeight(grade, classNo, weekDay, lesssonNo, schedulingProcessInfo);
         if (result < 0 || result > 1000) result = 0;
         if (iWeightCalc != null) {
             Integer udfWeight = iWeightCalc.weightCalc(grade, classNo, weekDay, lesssonNo, schedulingProcessInfo.getScheduleClassInfo().getSubjectInfo().getSubjectName());
             result += udfWeight;
         }
-
         return result;
+    }
+
+    private Integer mainSubjectAvgFirstLessson(Integer grade, Integer classNo, Integer weekDay, Integer lesssonNo, SchedulingProcessInfo schedulingProcessInfo) {
+        Integer result = 0;
+        Integer firstLessonCount = 0;
+        for (Integer w = 0; w < weekDay; w++) {
+            if (this.scheduleInfos.get(grade).get(classNo).get(w).get(lesssonNo).getSubjectInfo().equals(schedulingProcessInfo.getScheduleClassInfo().getSubjectInfo())) {
+                firstLessonCount++;
+            }
+        }
+        result -= firstLessonCount * WeightDefines.SUBJECT_FIRST_LESSON_WEIGHT_MICRO;
+        return result;
+
     }
 
     private Integer nullSubjectWeight(Integer grade, Integer classNo, Integer weekDay, Integer lesssonNo, SchedulingProcessInfo schedulingProcessInfo) {
@@ -576,8 +596,10 @@ public class ClassScheduling {
         if (this.scheduleInfos.get(grade).get(classNo).get(weekDay - 1).get(lesssonNo).getSubjectInfo() == null) {
             return 0;
         }
-        if (this.scheduleInfos.get(grade).get(classNo).get(weekDay - 1).get(lesssonNo).getSubjectInfo().equals(schedulingProcessInfo.getScheduleClassInfo().getSubjectInfo())) {
-            result -= WeightDefines.SUBJECT_SEQNO_DIFF;
+        if (lesssonNo == 0 || lesssonNo == this.gradeInfoMap.get(grade).getLessonAtAM()) {
+            if (this.scheduleInfos.get(grade).get(classNo).get(weekDay - 1).get(lesssonNo).getSubjectInfo().equals(schedulingProcessInfo.getScheduleClassInfo().getSubjectInfo())) {
+                result -= WeightDefines.SUBJECT_SEQNO_DIFF;
+            }
         }
         return result;
     }
@@ -595,15 +617,18 @@ public class ClassScheduling {
     private Integer spacePlaceWeight(Integer grade, Integer classNo, Integer weekDay, Integer lesssonNo, Integer subjectCount, SchedulingProcessInfo schedulingProcessInfo) {
         Integer result = 0;
         Integer unFixedPlaceCount = this.classFreeSpace.get(grade).get(classNo).intValue();
-
+        if (unFixedPlaceCount <= 0) {
+            return result;
+        }
         double freeSpaceRate = schedulingProcessInfo.getScheduleClassInfo().getFreeSpace() / unFixedPlaceCount;
-        if (freeSpaceRate / 1.0 / unFixedPlaceCount <= 0.8) {
+        if (freeSpaceRate <= 0.8) {
             result += WeightDefines.SUBJECT_FREE_SPACE;
         }
+        //剩余课程数大于平均课节数
         if (schedulingProcessInfo.getScheduleClassInfo().getUnUsedCount() > unFixedPlaceCount / 1.0 / this.gradeInfoMap.get(grade).getSubjectInfos().size()) {
             result += WeightDefines.SUBJECT_FREE_SPACE;
         }
-        if (schedulingProcessInfo.getScheduleClassInfo().getUnUsedCount() >= this.gradeInfoMap.get(grade).getDayPerWeek() - weekDay) {
+        if (schedulingProcessInfo.getScheduleClassInfo().getUnUsedCount() > this.gradeInfoMap.get(grade).getDayPerWeek() - weekDay) {
             result += WeightDefines.SUBJECT_FREE_SPACE * 2;
         }
         return result;
@@ -622,8 +647,16 @@ public class ClassScheduling {
         Integer result = 0;
         //查看当天是否已经安排
         Integer cntDayLesson = 0;
-        for (Integer l = 0; l < lesssonNo; l++) {
+        Integer cntFreeSpaceInDay = 0;
+        for (Integer l = 0; l < this.gradeInfoMap.get(grade).getLessonPerDay(); l++) {
             if (this.scheduleInfos.get(grade).get(classNo).get(weekDay).get(l).getSubjectInfo() == null) {
+//                for (SchedulingProcessInfo info : this.scheduledInfo.get(grade).get(classNo).get(weekDay).get(l)) {
+//                    if (info.getScheduleClassInfo().getSubjectInfo().equals(schedulingProcessInfo.getScheduleClassInfo().getSubjectInfo())) {
+//                        if (info.getCannotSelReason() == 0) {
+//                            cntFreeSpaceInDay++;
+//                        }
+//                    }
+//                }
                 continue;
             }
             if (this.scheduleInfos.get(grade).get(classNo).get(weekDay).get(l).getSubjectInfo().equals(schedulingProcessInfo.getScheduleClassInfo().getSubjectInfo())) {
@@ -639,9 +672,14 @@ public class ClassScheduling {
         } else {
             result -= WeightDefines.SUBJECT_PER_DAY;
         }
+        //todo
         //如果剩余的天数已经不够安排,即剩余课节除以剩余天数大于等于平均课节向上取整
-        if (schedulingProcessInfo.getScheduleClassInfo().getUnUsedCount() / 1.0 / (this.gradeInfoMap.get(grade).getDayPerWeek() - weekDay - 1) > Math.ceil(avgFixed)) {
-            result += WeightDefines.SUBJECT_PER_DAY;
+
+        //if (cntFreeSpaceInDay <= 2)
+        {
+            if (schedulingProcessInfo.getScheduleClassInfo().getUnUsedCount() / 1.0 / (this.gradeInfoMap.get(grade).getDayPerWeek() - weekDay - 1) > Math.ceil(avgFixed)) {
+                result += WeightDefines.SUBJECT_PER_DAY;
+            }
         }
         return result;
     }
@@ -689,9 +727,7 @@ public class ClassScheduling {
         Integer result = 0;
         switch (schedulingProcessInfo.getScheduleClassInfo().getSubjectInfo().getAttributes()) {
             case 1:
-                if (lesssonNo == 0) {
-                    result += WeightDefines.SUBJECT_FIRST_LESSON_WEIGHT;
-                } else if (lesssonNo < this.gradeInfoMap.get(grade).getLessonAtAM()) {
+                if (lesssonNo < this.gradeInfoMap.get(grade).getLessonAtAM()) {
                     result += WeightDefines.SUBJECT_ATTRIBUTES;
                 }
                 break;
